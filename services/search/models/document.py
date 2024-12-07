@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Union
 from datetime import date
 
 
@@ -11,7 +11,7 @@ class ImageOCR(BaseModel):
 
 
 class Metadata(BaseModel):
-    author: str
+    author: Union[str, None]
     created_date: date
     tags: List[str]
 
