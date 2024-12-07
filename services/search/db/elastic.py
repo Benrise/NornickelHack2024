@@ -1,5 +1,4 @@
 from elasticsearch import AsyncElasticsearch, BadRequestError, NotFoundError
-from fastapi import Depends
 
 from utils.abstract import AsyncSearchService
 

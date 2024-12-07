@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, status, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import ORJSONResponse
 from elasticsearch import AsyncElasticsearch
 
@@ -14,6 +14,8 @@ from core.config import settings, es_settings
 from core.logger import LOGGING
 from utils.logger import logger
 from managers.lifespan import LifespanManager
+
+from api.v1 import documents
 
 
 @asynccontextmanager
@@ -61,6 +63,7 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
     }
 
+app.include_router(documents.router, prefix='/search/api/v1/documents', tags=['documents'])
 
 if __name__ == '__main__':
     uvicorn.run(

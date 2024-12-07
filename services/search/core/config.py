@@ -12,6 +12,18 @@ from pydantic_settings import BaseSettings
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+QUERY_DESC = "Поисковая строка"
+QUERY_ALIAS = "query"
+
+PAGE_DESC = "Номер страницы"
+PAGE_ALIAS = "page"
+
+SIZE_DESC = "Количество элементов на странице"
+SIZE_ALIAS = "size"
+
+MAX_PAGE_SIZE = 100
+MAX_GENRES_SIZE = 50
+
 
 logging_config.dictConfig(LOGGING)
 
