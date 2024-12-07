@@ -11,14 +11,13 @@ class ImageOCR(BaseModel):
 
 
 class Metadata(BaseModel):
-    file_type: str
     author: str
     created_date: date
     tags: List[str]
 
 
 class Document(BaseModel):
-    doc_id: str
+    document_id: str
     title: str
     text_content: str
     metadata: Metadata

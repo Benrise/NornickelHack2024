@@ -20,23 +20,31 @@ class DocumentService:
         size: int
     ) -> List[Union[Document, None]]:
         page -= 1
+        
         body = {
-            "from": page,
-            "size": size,
-            "query": {"match": {"title": {"query": query}}}
+                "from": page,
+                "size": size,
         }
+        
+        if len(query) == 0 or query is None:
+            body["query"] = {"match_all": {}}
+        else:
+            body["query"] = {"match": {"title": {"query": query}}}
+        
         doc = await self.search_service.search(
             index=index_name,
             body=body,
-            _source_includes=[
-                "title",
-                "text_content",
-                "metadata.author",
-                "metadata.created_date"
-            ]
+            _source_includes=None
         )
 
         return [Document(**i['_source']) for i in doc['hits']['hits']]
+
+    async def add_document(self, document: Document) -> dict:
+        response = await self.search_service.index(
+            index=index_name,
+            body=document.model_dump(),
+        )
+        return response
 
 
 @lru_cache()

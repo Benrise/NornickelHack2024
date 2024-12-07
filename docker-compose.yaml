@@ -58,3 +58,15 @@ services:
         - ./services/nginx/logs:/var/log/nginx/
       ports:
         - ${NGINX_PORTS}
+
+    etl:
+      container_name: "etl"
+      build: ./services/etl
+      volumes:
+        - ./services/etl:/app:ro
+        - ./services/etl/logs:/app/logs
+      env_file:
+        - .env
+      depends_on: 
+        elasticsearch:
+          condition: service_healthy
