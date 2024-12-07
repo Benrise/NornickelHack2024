@@ -29,3 +29,14 @@ services:
         - .env
       depends_on:
         - elasticsearch
+
+    nginx:
+      container_name: "nginx"
+      restart: always
+      build: ./services/nginx
+      volumes:
+        - ./services/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+        - ./services/nginx/configs:/etc/nginx/conf.d:ro
+        - ./services/nginx/logs:/var/log/nginx/
+      ports:
+        - ${NGINX_PORTS}
