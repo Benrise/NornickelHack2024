@@ -38,9 +38,9 @@ settings = Settings()
 
 
 class ElasticsearchSettings(BaseSettings):
-    es_protocol: str = Field('http', alias='SEARCH_ES_PROTOCOL')
-    es_host: str = Field('elasticsearch', alias='SEARCH_ES_HOST')
-    es_port: int = Field(9200, alias='SEARCH_ES_PORT')
+    es_protocol: str = Field('http', alias='ELASTICSEARCH_PROTOCOL')
+    es_host: str = Field('elasticsearch', alias='ELASTICSEARCH_HOST')
+    es_port: int = Field(9200, alias='ELASTICSEARCH_PORT')
     indicies: List[Dict[str, Union[str, dict]]] = [
         {
             "name": document_index_name,
