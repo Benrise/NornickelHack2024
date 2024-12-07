@@ -1,0 +1,11 @@
+fastapi==0.109.0
+uvicorn==0.29.0
+uvloop==0.19.0 ; sys_platform != "win32" and implementation_name == "cpython"
+elasticsearch[async]==8.13.0
+pydantic==2.8.0
+pydantic-settings==2.3.4
+backoff==2.2.1
+requests==2.31.0
+orjson==3.10.2
+httpx==0.28.0
+joblib==1.4.2

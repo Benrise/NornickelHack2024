@@ -1,0 +1,31 @@
+services:
+    elasticsearch:
+      container_name: "elasticsearch"
+      image: elasticsearch:8.12.1
+      volumes:
+        - ./services/es/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+        - ./services/es/data:/usr/share/elasticsearch/data
+      healthcheck:
+        test: ["CMD-SHELL", "curl -s http://localhost:${SEARCH_ES_PORT}/_cat/health?h=status | grep -q green"]
+        retries: 30
+        interval: 3s
+      deploy:
+        resources:
+          limits:
+            memory: 4GB
+
+    search:
+      container_name: search
+      build: ./services/search
+      volumes:
+        - ./services/search:/app:ro
+        - ./services/search/logs:/app/logs
+        - ./services/search/data:/app/data
+      healthcheck:
+        test: ["CMD-SHELL", "curl -f http://localhost:${SEARCH_SERVICE_PORT}/health || exit 1"]
+        retries: 30
+        interval: 3s
+      env_file:
+        - .env
+      depends_on:
+        - elasticsearch
