@@ -25,6 +25,7 @@ MAX_PAGE_SIZE = 100
 MAX_GENRES_SIZE = 50
 
 UPLOAD_FILES_DIR = "./data/uploaded_documents"
+TEMP_FILES_DIR = "./data/temp_files"
 
 
 logging_config.dictConfig(LOGGING)

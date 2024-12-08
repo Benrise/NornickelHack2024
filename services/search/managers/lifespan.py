@@ -2,7 +2,7 @@ import nltk
 
 from elasticsearch import AsyncElasticsearch
 from nltk.corpus import stopwords
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, models
 from transformers import ViTModel, ViTImageProcessor
 
 

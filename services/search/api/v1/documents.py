@@ -1,17 +1,17 @@
 import os
-import shutil
+import numpy as np
 from typing import List
 
 from fastapi import (
     APIRouter, 
     Depends, 
-    Query, 
-    HTTPException, 
+    Query,
     UploadFile, 
     File,
-    Request
+    Request,
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from PIL import Image
 
 from models.abstract import PaginatedParams
 from models.document import Document
@@ -45,6 +45,61 @@ async def get_documents(
     return documents
 
 
+@router.post("/multimodal_search")
+async def get_documents_by_multimodal_query(
+    query: str = Query(
+        default='',
+        strict=False,
+        alias=config.QUERY_ALIAS,
+        description=config.QUERY_DESC,
+    ),
+    image: UploadFile = None,
+    pagination: PaginatedParams = Depends(),
+    document_service: DocumentService = Depends(get_document_service),
+    preprocessing_service: PreprocessingService = Depends(get_preprocessing_service),
+):
+    """
+    Поиск документов с учетом текстового запроса и/или изображения.
+    """
+    query_vector = None
+    image_vector = None
+
+    # Обрабатываем текстовый запрос
+    if query:
+        query_vector = preprocessing_service.vectorize_text(query)
+
+    # Обрабатываем изображение
+    if image:
+        temp_image_path = save_file(image, config.TEMP_FILES_DIR)
+        try:
+            image_obj = Image.open(temp_image_path)
+            image_vector = preprocessing_service.vectorize_image(image_obj)
+        finally:
+            os.remove(temp_image_path)
+
+    # Выполняем запрос в сервис поиска
+    response = await document_service.get_documents_by_multimodal_query(
+        query_vector=query_vector,
+        image_vector=image_vector,
+        page=pagination.page,
+        size=pagination.size,
+    )
+
+    # Обработка результатов поиска
+    hits = response["hits"]["hits"]
+    if not hits:
+        return {"message": "No documents found matching your query."}
+
+    best_hit = hits[0]
+    file_path = best_hit["_source"]["file_path"]
+
+    # Возвращаем файл с наивысшим скором
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="application/octet-stream", filename=os.path.basename(file_path))
+    else:
+        return {"message": "Document found but file is missing on server."}
+
+
 @router.get('/vectors/',
             response_model=List[List[float]],
             summary='Получить список всех векторов документов',
@@ -69,14 +124,15 @@ async def process_document_endpoint(
     """
     local_file_path = save_file(file, config.UPLOAD_FILES_DIR)
     
-    try:
-        result: Document = preprocessing_service.process_document(local_file_path)
-        
-        #os.remove(local_file_path)
-        
-        await search_service.index(index=config.document_index_name, body=result)
+    result: Document = preprocessing_service.process_document(local_file_path)
+    
+    response = await search_service.index(index=config.document_index_name, body=result)
+    
+    new_file_path = os.path.join(config.UPLOAD_FILES_DIR, f"{response['_id']}{os.path.splitext(local_file_path)[-1]}")
 
-        return JSONResponse(content=result)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+    os.rename(local_file_path, new_file_path)
+    
+    result["file_path"] = new_file_path
+
+    return JSONResponse(content=result)
 

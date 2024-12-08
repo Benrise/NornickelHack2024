@@ -22,14 +22,13 @@ STOPWORD_COLLECTION = None
 VIT_MODEL = None
 VIT_PROCESSOR = None
 
-
 class PreprocessingService:
     def __init__(
         self, 
         stopwords_collection: set, 
         vectorizer_model: object, 
         vit_model: object, 
-        vit_processor: object
+        vit_processor: object,
     ) -> None:
         self.stopwords = stopwords_collection
         self.vectorizer_model = vectorizer_model
@@ -262,6 +261,8 @@ class PreprocessingService:
             # Конвертация в оттенки серого
         
             gray_image = ImageOps.grayscale(image)
+            
+            gray_image = gray_image.convert("RGB")
         
             # Увеличение резкости
         
@@ -412,7 +413,7 @@ class PreprocessingService:
             return {}
         
         # Убедимся, что изображения — это объекты PIL.Image
-        image_objects = [Image.open(img_path) for img_path in images]
+        image_objects = [self.preprocess_image(img_path) for img_path in images]
 
         # Векторизуем изображения
         image_embeddings = [self.vectorize_image(img) for img in image_objects]
@@ -437,6 +438,7 @@ class PreprocessingService:
             image_info = {
                 "image_id": f"img_{idx}",
                 "image_embedding": img_embedding,
+                "position": f"Page {idx}",
                 "image_path": img_path
             }
             result["images"].append(image_info)
@@ -449,7 +451,7 @@ def get_preprocessing_service():
         stopwords_collection=STOPWORD_COLLECTION,
         vectorizer_model=VECTORIZER_MODEL,
         vit_model=VIT_MODEL,
-        vit_processor=VIT_PROCESSOR
+        vit_processor=VIT_PROCESSOR,
     )
 
 
