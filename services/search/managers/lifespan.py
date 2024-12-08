@@ -1,4 +1,7 @@
 
+import pytesseract
+import nltk
+
 from elasticsearch import AsyncElasticsearch
 
 from utils.logger import logger
@@ -42,3 +45,16 @@ class LifespanManager:
 
         for index in indicies:
             await ensure_index_exists(name=index["name"], body=index["body"])
+
+    async def upload_preprocessing_models(self):
+        pytesseract.pytesseract.tesseract_cmd = r"/usr/local/bin/pytesseract"
+        logger.info("Loading preprocessing models...")
+        logger.info("Finding stopwords...")
+        try:
+            nltk.data.find('corpora/stopwords')
+        except LookupError:
+            logger.info("Downloading stopwords...")
+            nltk.download('stopwords')
+        logger.info("Downloading punkt...")
+        nltk.download('punkt')
+        logger.info("Uploading preprocessing models complete.")

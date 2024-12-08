@@ -1,3 +1,4 @@
+import os
 import uvicorn
 import logging
 
@@ -23,6 +24,7 @@ async def lifespan(_: FastAPI):
     elastic.es = AsyncElasticsearch(hosts=[es_settings.elastic_url])
     lifespan_manager = LifespanManager(elastic.es)
     await lifespan_manager.init_es(indicies=es_settings.indicies)
+    await lifespan_manager.upload_preprocessing_models()
     yield
     await elastic.es.close()
 

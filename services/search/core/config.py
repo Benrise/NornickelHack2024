@@ -24,6 +24,8 @@ SIZE_ALIAS = "size"
 MAX_PAGE_SIZE = 100
 MAX_GENRES_SIZE = 50
 
+UPLOAD_FILES_DIR = "./data/uploaded_documents"
+
 
 logging_config.dictConfig(LOGGING)
 

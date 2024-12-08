@@ -1,9 +1,23 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+import os
+import shutil
+
+from fastapi import (
+    APIRouter, 
+    Depends, 
+    Query, 
+    HTTPException, 
+    UploadFile, 
+    File,
+)
+from fastapi.responses import JSONResponse
 
 from models.abstract import PaginatedParams
-from services.document import DocumentService, get_document_service
-from core import config
 from models.document import Document
+from services.document import DocumentService, get_document_service
+from utils.file import save_file
+from db.elastic import AsyncSearchService, get_elastic
+from services.preprocessing import PreprocessingService, get_preprocessing_service
+from core import config
 
 
 router = APIRouter()
@@ -27,14 +41,27 @@ async def get_documents(
     )
 
     return documents
+    
 
-
-@router.post("/add")
-async def add_document(
-    document: Document,
-    document_service: DocumentService = Depends(get_document_service)
+@router.post("/process/")
+async def process_document_endpoint(
+    file: UploadFile = File(...),
+    preprocessing_service: PreprocessingService = Depends(get_preprocessing_service),
+    search_service: AsyncSearchService = Depends(get_elastic)
 ):
-    response = await document_service.add_document(document)
-    if "result" in response and response["result"] == "created":
-        return {"message": "Document added successfully", "id": response["_id"]}
-    raise HTTPException(status_code=500, detail="Failed to add document")
+    """
+    Эндпоинт для загрузки документа и его обработки.
+    """
+    local_file_path = save_file(file, config.UPLOAD_FILES_DIR)
+    
+    try:
+        result: Document = preprocessing_service.process_document(local_file_path)
+        
+        #os.remove(local_file_path)
+        
+        await search_service.index(index=config.document_index_name, body=result)
+
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+
