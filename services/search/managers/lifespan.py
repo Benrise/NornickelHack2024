@@ -1,10 +1,10 @@
-
-import pytesseract
 import nltk
 
 from elasticsearch import AsyncElasticsearch
 from nltk.corpus import stopwords
 from sentence_transformers import SentenceTransformer
+from transformers import ViTModel, ViTImageProcessor
+
 
 from utils.logger import logger
 from services import preprocessing
@@ -50,8 +50,14 @@ class LifespanManager:
             await ensure_index_exists(name=index["name"], body=index["body"])
 
     async def upload_preprocessing_models(self):
-        pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
         logger.info("Loading preprocessing models...")
+        logger.info("Loading VIT model...")
+        preprocessing.VIT_MODEL = ViTModel.from_pretrained(
+            "google/vit-base-patch16-224-in21k"
+        )
+        preprocessing.VIT_PROCESSOR = ViTImageProcessor.from_pretrained(
+            "google/vit-base-patch16-224-in21k"
+        )
         logger.info("Loading vectorizer...")
         preprocessing.VECTORIZER_MODEL = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
         logger.info("Finding stopwords...")

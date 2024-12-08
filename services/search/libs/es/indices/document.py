@@ -55,7 +55,7 @@ index_json = {
         "type": "text",
         "analyzer": "standard"
       },
-      "text_content_vector": {
+      "text_content_embedding": {
         "type": "dense_vector",
         "dims": 384
       },
@@ -83,9 +83,9 @@ index_json = {
           "image_id": {
             "type": "keyword"
           },
-          "ocr_text": {
-            "type": "text",
-            "analyzer": "standard"
+          "image_embedding": {
+            "type": "dense_vector",
+            "dims": 768
           },
           "position": {
             "type": "keyword"

@@ -54,7 +54,7 @@ class DocumentService:
             body = {
                 "from": from_,
                 "size": size,
-                "_source": ["text_content_vector"],
+                "_source": ["text_content_embedding"],
                 "query": {
                     "match_all": {}
                 }
@@ -62,14 +62,14 @@ class DocumentService:
             response = await self.search_service.search(
                 index=index_name,
                 body=body,
-                _source_includes=["text_content_vector"]
+                _source_includes=["text_content_embedding"]
             )
 
             hits = response['hits']['hits']
             if not hits:
                 break
 
-            vectors.extend(hit["_source"]["text_content_vector"] for hit in hits)
+            vectors.extend(hit["_source"]["text_content_embedding"] for hit in hits)
             from_ += size
 
         return vectors

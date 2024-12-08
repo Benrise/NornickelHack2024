@@ -1,9 +1,10 @@
 import os
 import re
-import pytesseract
 import fitz
 import uuid
 import PyPDF2
+import torch
+
 from functools import lru_cache
 from datetime import datetime
 from typing import List, Dict, Any
@@ -18,12 +19,22 @@ from datetime import datetime
 
 VECTORIZER_MODEL = None
 STOPWORD_COLLECTION = None
+VIT_MODEL = None
+VIT_PROCESSOR = None
 
 
 class PreprocessingService:
-    def __init__(self, stopwords_collection: set, vectorizer_model: object) -> None:
+    def __init__(
+        self, 
+        stopwords_collection: set, 
+        vectorizer_model: object, 
+        vit_model: object, 
+        vit_processor: object
+    ) -> None:
         self.stopwords = stopwords_collection
         self.vectorizer_model = vectorizer_model
+        self.vit_model = vit_model
+        self.vit_processor = vit_processor
         
     """
     Извлечение и генерация метаданных
@@ -266,20 +277,6 @@ class PreprocessingService:
         
             return Image.open(image_path)
 
-    def has_text_in_image(self, image_path: str) -> bool:
-        """Проверяет, содержит ли изображение текст."""
-        try:
-            # Предобработка изображения
-            processed_image = self.preprocess_image(image_path)
-            # Конфигурация OCR
-            config = r'--oem 3 --psm 3'
-            # Распознавание текста с улучшенной конфигурацией
-            text = pytesseract.image_to_string(processed_image, lang="rus+eng", config=config)
-            return bool(text.strip())
-        except Exception as e:
-            print(f"Ошибка проверки текста в изображении {image_path}: {e}")
-            return False
-
     def extract_images_from_pdf(self, pdf_path: str, folder_path: str) -> List[str]:
         """Извлекает изображения из PDF-документа и сохраняет только те, что содержат текст."""
         images = []
@@ -296,15 +293,9 @@ class PreprocessingService:
                     temp_path = f"{folder_path}/temp_image.{image_ext}"
                     with open(temp_path, "wb") as f:
                         f.write(image_bytes)
-                    # Проверяем наличие текста
-                    if self.has_text_in_image(temp_path):
-                        # Если текст есть, сохраняем изображение с нормальным именем
-                        image_path = f"{folder_path}/image_page{page_num + 1}_img{img_index + 1}.{image_ext}"
-                        os.rename(temp_path, image_path)
-                        images.append(image_path)
-                    else:
-                        # Если текста нет, удаляем временный файл
-                        os.remove(temp_path)
+                    image_path = f"{folder_path}/image_page{page_num + 1}_img{img_index + 1}.{image_ext}"
+                    os.rename(temp_path, image_path)
+                    images.append(image_path)
         except Exception as e:
             print(f"Ошибка извлечения изображений из PDF {pdf_path}: {e}")
         return images
@@ -322,83 +313,24 @@ class PreprocessingService:
                     with open(temp_path, "wb") as f:
                         f.write(image_data)
                     # Проверяем наличие текста
-                    if self.has_text_in_image(temp_path):
-                        # Если текст есть, сохраняем изображение с нормальным именем
-                        image_path = f"{folder_path}/image_word_{len(images) + 1}.png"
-                        os.rename(temp_path, image_path)
-                        images.append(image_path)
-                    else:
-                        # Если текста нет, удаляем временный файл
-                        os.remove(temp_path)
+                    image_path = f"{folder_path}/image_word_{len(images) + 1}.png"
+                    os.rename(temp_path, image_path)
+                    images.append(image_path)
         except Exception as e:
             print(f"Ошибка извлечения изображений из Word {word_path}: {e}")
         return images
 
     """
-    OCR для изображений
+    Получение эмбеддингов для изображений
     """
-    def clean_ocr_text(self, text: str) -> str:
-        """Очищает распознанный текст от мусора и нормализует его."""
-        try:
-            # Удаляем специальные символы, оставляя буквы, цифры, точки и запятые
-            cleaned = re.sub(r'[^a-zA-Zа-яА-Я0-9.,\s]', '', text)
-            
-            # Заменяем множественные пробелы на один
-            cleaned = re.sub(r'\s+', ' ', cleaned)
-            
-            # Удаляем пробелы перед знаками препинания
-            cleaned = re.sub(r'\s+([.,])', r'\1', cleaned)
-            
-            # Удаляем отдельно стоящие буквы (вероятные ошибки распознавания)
-            cleaned = re.sub(r'\s+[a-zA-Zа-яА-Я]\s+', ' ', cleaned)
-            
-            # Удаляем строки, содержащие менее 2 символов
-            lines = [line.strip() for line in cleaned.split('\n') if len(line.strip()) > 2]
-            
-            return '\n'.join(lines).strip()
-        except Exception as e:
-            print(f"Ошибка очистки текста: {e}")
-            return text
-
-    def extract_text_from_images(self, image_paths: List[str]) -> List[str]:
-        """Применяет OCR ко всем изображениям из списка с улучшенной обработкой текста."""
-        texts = []
+    def vectorize_image(self, image: Image) -> List[List[float]]:
+        inputs = self.vit_processor(images=image, return_tensors="pt")
         
-        for image_path in image_paths:
-            try:
-                # Предобработка изображения
-                processed_image = self.preprocess_image(image_path)
-                
-                # Применяем OCR с поддержкой обоих языков
-                config = r'--oem 3 --psm 3 -c preserve_interword_spaces=1'
-                
-                # Используем оба языка одновременно
-                ocr_text = pytesseract.image_to_string(
-                    processed_image,
-                    lang="rus+eng",
-                    config=config
-                )
-                
-                # Очищаем и нормализуем текст
-                cleaned_text = self.clean_ocr_text(ocr_text)
-                
-                # Дополнительная проверка на качество распознавания
-                if len(cleaned_text) > 0:
-                    # Разбиваем на строки и фильтруем пустые
-                    lines = [line.strip() for line in cleaned_text.split('\n') if line.strip()]
-                    # Объединяем обратно в текст
-                    final_text = '\n'.join(lines)
-                    texts.append(final_text)
-                else:
-                    texts.append("")
-                    
-            except Exception as e:
-                print(f"Ошибка OCR для {image_path}: {e}")
-                texts.append("")
-                
-        return texts
-
-
+        with torch.no_grad():
+            outputs = self.vit_model(**inputs)
+        
+        return outputs.last_hidden_state.mean(dim=1).squeeze().cpu().numpy().tolist()
+        
     """
     Очистка текста
     """ 
@@ -461,7 +393,7 @@ class PreprocessingService:
 
         # Получаем название файла без расширения и создаем ID документа
         file_name = os.path.splitext(os.path.basename(file_path))[0]
-        document_id = self.generate_document_id()    
+        document_id = self.generate_document_id()
 
         # Создаем папку для изображений документа
         folder_path = self.create_document_folder(document_id)
@@ -478,33 +410,33 @@ class PreprocessingService:
         else:
             print(f"Формат файла {ext} не поддерживается.")
             return {}
+        
+        # Убедимся, что изображения — это объекты PIL.Image
+        image_objects = [Image.open(img_path) for img_path in images]
 
-        # Применяем OCR для изображений
-        ocr_texts = self.extract_text_from_images(images)
+        # Векторизуем изображения
+        image_embeddings = [self.vectorize_image(img) for img in image_objects]
 
         # Очищаем текст
-        cleaned_text = self.clean_text(text + " " + " ".join(ocr_texts))
+        cleaned_text = self.clean_text(text)
 
         # Векторизуем очищенный текст
         text_vector = self.vectorize_text(cleaned_text)
-
-        # Теги
 
         # Собираем итоговый результат
         result["document_id"] = document_id
         result["title"] = file_name  # Название файла без расширения
         result["text_content"] = cleaned_text
-        result["text_content_vector"] = text_vector  # Добавляем векторное представление текста
+        result["text_content_embedding"] = text_vector  # Добавляем векторное представление текста
         metadata["tags"] = self.generate_tags_multilang(cleaned_text, num_tags=10)  # Сгенерированные ключевые слова для текста
         result["metadata"] = metadata  # Все метаданные, включая теги
 
         # Формируем информацию о каждом изображении
         result["images"] = []
-        for idx, (img_path, ocr_text) in enumerate(zip(images, ocr_texts), start=1):
+        for idx, (img_path, img_embedding) in enumerate(zip(images, image_embeddings), start=1):
             image_info = {
                 "image_id": f"img_{idx}",
-                "ocr_text": ocr_text,
-                "position": f"Page {idx}",
+                "image_embedding": img_embedding,
                 "image_path": img_path
             }
             result["images"].append(image_info)
@@ -515,7 +447,9 @@ class PreprocessingService:
 def get_preprocessing_service():
     return PreprocessingService(
         stopwords_collection=STOPWORD_COLLECTION,
-        vectorizer_model=VECTORIZER_MODEL
+        vectorizer_model=VECTORIZER_MODEL,
+        vit_model=VIT_MODEL,
+        vit_processor=VIT_PROCESSOR
     )
 
 

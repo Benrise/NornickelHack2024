@@ -3,9 +3,9 @@ from typing import List, Union
 from datetime import date
 
 
-class ImageOCR(BaseModel):
+class Image(BaseModel):
     image_id: str
-    ocr_text: str
+    image_embedding: list
     position: str
     image_path: str
 
@@ -20,5 +20,6 @@ class Document(BaseModel):
     document_id: str
     title: str
     text_content: str
+    text_content_embedding: list
     metadata: Metadata
-    images: List[ImageOCR]
+    images: List[Image]
