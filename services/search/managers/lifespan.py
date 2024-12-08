@@ -3,8 +3,11 @@ import pytesseract
 import nltk
 
 from elasticsearch import AsyncElasticsearch
+from nltk.corpus import stopwords
+from sentence_transformers import SentenceTransformer
 
 from utils.logger import logger
+from services import preprocessing
 
 
 class LifespanManager:
@@ -47,14 +50,17 @@ class LifespanManager:
             await ensure_index_exists(name=index["name"], body=index["body"])
 
     async def upload_preprocessing_models(self):
-        pytesseract.pytesseract.tesseract_cmd = r"/usr/local/bin/pytesseract"
+        pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
         logger.info("Loading preprocessing models...")
+        logger.info("Loading vectorizer...")
+        preprocessing.VECTORIZER_MODEL = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
         logger.info("Finding stopwords...")
         try:
             nltk.data.find('corpora/stopwords')
         except LookupError:
             logger.info("Downloading stopwords...")
             nltk.download('stopwords')
+        preprocessing.STOPWORD_COLLECTION = set(stopwords.words('russian'))
         logger.info("Downloading punkt...")
         nltk.download('punkt')
         logger.info("Uploading preprocessing models complete.")

@@ -10,12 +10,14 @@ from typing import List, Dict, Any
 
 from docx import Document
 from PIL import Image, ImageOps, ImageEnhance
-from nltk.corpus import stopwords
 from collections import Counter
 from langdetect import detect
 from typing import Dict, Any, List
-from sentence_transformers import SentenceTransformer
 from datetime import datetime
+
+
+VECTORIZER_MODEL = None
+STOPWORD_COLLECTION = None
 
 
 class PreprocessingService:
@@ -512,8 +514,8 @@ class PreprocessingService:
 @lru_cache()
 def get_preprocessing_service():
     return PreprocessingService(
-        stopwords_collection=set(stopwords.words('russian')),
-        vectorizer_model=SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+        stopwords_collection=STOPWORD_COLLECTION,
+        vectorizer_model=VECTORIZER_MODEL
     )
 
 
