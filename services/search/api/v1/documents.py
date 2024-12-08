@@ -1,5 +1,6 @@
 import os
 import shutil
+from typing import List
 
 from fastapi import (
     APIRouter, 
@@ -8,6 +9,7 @@ from fastapi import (
     HTTPException, 
     UploadFile, 
     File,
+    Request
 )
 from fastapi.responses import JSONResponse
 
@@ -41,7 +43,20 @@ async def get_documents(
     )
 
     return documents
-    
+
+
+@router.get('/vectors/',
+            response_model=List[List[float]],
+            summary='Получить список всех векторов документов',
+            description='Формат массива данных ответа: [[text_content_vector1], [text_content_vector2], [text_content_vector3], ...]')
+async def documents_vectors(
+        _: Request,
+        film_service: DocumentService = Depends(get_document_service),
+):
+    vectors: List[List[float]] = await film_service.get_documents_vectors()
+
+    return vectors
+
 
 @router.post("/process/")
 async def process_document_endpoint(

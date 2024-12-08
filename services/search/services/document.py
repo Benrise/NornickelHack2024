@@ -45,6 +45,34 @@ class DocumentService:
             body=document.model_dump(),
         )
         return response
+    
+    async def get_documents_vectors(self) -> List[List[float]]:
+        vectors = []
+        size = 100
+        from_ = 0
+        while True:
+            body = {
+                "from": from_,
+                "size": size,
+                "_source": ["text_content_vector"],
+                "query": {
+                    "match_all": {}
+                }
+            }
+            response = await self.search_service.search(
+                index=index_name,
+                body=body,
+                _source_includes=["text_content_vector"]
+            )
+
+            hits = response['hits']['hits']
+            if not hits:
+                break
+
+            vectors.extend(hit["_source"]["text_content_vector"] for hit in hits)
+            from_ += size
+
+        return vectors
 
 
 @lru_cache()
